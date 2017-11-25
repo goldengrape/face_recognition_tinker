@@ -11,7 +11,7 @@ Deeplearning.ai课程中第4门卷积神经网络里, 第4周的作业是做一�
 FRmodel = faceRecoModel(input_shape=(3, 96, 96))
 load_weights_from_FaceNet(FRmodel)
 ```
-这个编码器是已经训练好的. 
+这个编码器是已经训练好的.
 
 有了编码器, 就可以把任意人脸的照片进行编码, 例如:
 ```python

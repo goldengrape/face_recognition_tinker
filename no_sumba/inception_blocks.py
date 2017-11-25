@@ -1,5 +1,4 @@
 import tensorflow as tf
-from numba import jit
 import numpy as np
 import os
 from numpy import genfromtxt
@@ -10,8 +9,6 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers.pooling import MaxPooling2D, AveragePooling2D
 import fr_utils
 from keras.layers.core import Lambda, Flatten, Dense
-
-@jit
 
 def inception_block_1a(X):
     """
@@ -49,8 +46,6 @@ def inception_block_1a(X):
 
     return inception
 
-@jit
-
 def inception_block_1b(X):
     X_3x3 = Conv2D(96, (1, 1), data_format='channels_first', name='inception_3b_3x3_conv1')(X)
     X_3x3 = BatchNormalization(axis=1, epsilon=0.00001, name='inception_3b_3x3_bn1')(X_3x3)
@@ -82,8 +77,6 @@ def inception_block_1b(X):
 
     return inception
 
-@jit
-
 def inception_block_1c(X):
     X_3x3 = fr_utils.conv2d_bn(X,
                            layer='inception_3c_3x3',
@@ -109,8 +102,6 @@ def inception_block_1c(X):
     inception = concatenate([X_3x3, X_5x5, X_pool], axis=1)
 
     return inception
-
-@jit
 
 def inception_block_2a(X):
     X_3x3 = fr_utils.conv2d_bn(X,
@@ -144,8 +135,6 @@ def inception_block_2a(X):
 
     return inception
 
-@jit
-
 def inception_block_2b(X):
     #inception4e
     X_3x3 = fr_utils.conv2d_bn(X,
@@ -172,8 +161,6 @@ def inception_block_2b(X):
 
     return inception
 
-@jit
-
 def inception_block_3a(X):
     X_3x3 = fr_utils.conv2d_bn(X,
                            layer='inception_5a_3x3',
@@ -198,8 +185,6 @@ def inception_block_3a(X):
 
     return inception
 
-@jit
-
 def inception_block_3b(X):
     X_3x3 = fr_utils.conv2d_bn(X,
                            layer='inception_5b_3x3',
@@ -223,8 +208,6 @@ def inception_block_3b(X):
     inception = concatenate([X_3x3, X_pool, X_1x1], axis=1)
 
     return inception
-
-@jit
 
 def faceRecoModel(input_shape):
     """

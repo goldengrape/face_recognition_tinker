@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>Face_Recognition_tinker</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>decorate_with_jit</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11775,13 +11775,8 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="&#25345;&#32493;&#35757;&#32451;">&#25345;&#32493;&#35757;&#32451;<a class="anchor-link" href="#&#25345;&#32493;&#35757;&#32451;">&#182;</a></h1><p>问题提出: 如果人脸识别在使用中发现准确率并不够高, 是否可以继续改进? 如何在已有的基础之上继续改进?</p>
-<p>解决方法: 建立并联的判别神经网络, 将A人脸的128位编码和待测人脸的128位编码作为输入, 二值判别输出</p>
-<ul>
-<li>路径A: 计算二阶范数距离, 并以原题目中的阈值作为分界, 形成输出</li>
-<li>路径B: 待训练神经网络, 早期时参数值都很小, 因此输出值也很小, 但可被训练. </li>
-</ul>
-<p>路径A和路径B的加权平均作为最终输出.</p>
+<h1 id="&#32473;&#25152;&#26377;&#20989;&#25968;&#20462;&#39280;">&#32473;&#25152;&#26377;&#20989;&#25968;&#20462;&#39280;<a class="anchor-link" href="#&#32473;&#25152;&#26377;&#20989;&#25968;&#20462;&#39280;">&#182;</a></h1><p>Numba是一个python的加速器, 最简单的加速方式仅仅是在导入numba以后, 在函数定义之前增加@jit.</p>
+<p>本程序是为了测试简单增加或者消除所有函数前@jit</p>
 
 </div>
 </div>
@@ -11791,65 +11786,9 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># from keras.models import Sequential</span>
-<span class="kn">from</span> <span class="nn">keras.layers</span> <span class="k">import</span> <span class="n">Conv2D</span><span class="p">,</span> <span class="n">ZeroPadding2D</span><span class="p">,</span> <span class="n">Activation</span><span class="p">,</span> <span class="n">Input</span><span class="p">,</span> <span class="n">concatenate</span><span class="p">,</span> <span class="n">Add</span>
-<span class="kn">from</span> <span class="nn">keras.models</span> <span class="k">import</span> <span class="n">Model</span>
-<span class="c1"># from keras.layers.normalization import BatchNormalization</span>
-<span class="c1"># from keras.layers.pooling import MaxPooling2D, AveragePooling2D</span>
-<span class="c1"># from keras.layers.merge import Concatenate</span>
-<span class="c1"># from keras.layers.core import Lambda, Flatten, Dense</span>
-<span class="c1"># from keras.initializers import glorot_uniform, </span>
-<span class="kn">from</span> <span class="nn">keras.initializers</span> <span class="k">import</span> <span class="n">RandomNormal</span>
-<span class="c1"># from keras.engine.topology import Layer</span>
-<span class="kn">from</span> <span class="nn">keras</span> <span class="k">import</span> <span class="n">backend</span> <span class="k">as</span> <span class="n">K</span>
-<span class="n">K</span><span class="o">.</span><span class="n">set_image_data_format</span><span class="p">(</span><span class="s1">&#39;channels_first&#39;</span><span class="p">)</span>
-<span class="kn">import</span> <span class="nn">cv2</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">from</span> <span class="nn">numba</span> <span class="k">import</span> <span class="n">jit</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="c1"># from numpy import genfromtxt</span>
-<span class="c1"># import pandas as pd</span>
-<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
-<span class="kn">from</span> <span class="nn">fr_utils</span> <span class="k">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">inception_blocks_v2</span> <span class="k">import</span> <span class="o">*</span>
-
-<span class="o">%</span><span class="k">matplotlib</span> inline
-<span class="o">%</span><span class="k">load_ext</span> autoreload
-<span class="o">%</span><span class="k">autoreload</span> 2
-
-<span class="n">np</span><span class="o">.</span><span class="n">set_printoptions</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-</pre></div>
-
-</div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-<div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>Using TensorFlow backend.
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">FRmodel</span> <span class="o">=</span> <span class="n">faceRecoModel</span><span class="p">(</span><span class="n">input_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">96</span><span class="p">))</span>
-<span class="n">load_weights_from_FaceNet</span><span class="p">(</span><span class="n">FRmodel</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">re</span>
 </pre></div>
 
 </div>
@@ -11861,7 +11800,33 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>测试数据</p>
+<h1 id="&#25171;&#24320;&#25991;&#20214;">&#25171;&#24320;&#25991;&#20214;<a class="anchor-link" href="#&#25171;&#24320;&#25991;&#20214;">&#182;</a></h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">get_file_content</span><span class="p">(</span><span class="n">input_filename</span><span class="p">):</span>
+    <span class="n">_</span><span class="p">,</span><span class="n">ext</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">input_filename</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_filename</span><span class="p">,</span><span class="s1">&#39;rt&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_input</span><span class="p">:</span>
+        <span class="n">f_content</span><span class="o">=</span><span class="n">f_input</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">ext</span><span class="p">,</span><span class="n">f_content</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="&#20381;&#29031;&#27169;&#24335;&#22686;&#21152;&#25110;&#31227;&#38500;">&#20381;&#29031;&#27169;&#24335;&#22686;&#21152;&#25110;&#31227;&#38500;<a class="anchor-link" href="#&#20381;&#29031;&#27169;&#24335;&#22686;&#21152;&#25110;&#31227;&#38500;">&#182;</a></h1><p>使用了正则表达式<code>'(\n)(\s*)(def)'</code>, 因为不能确定def之前的缩进有多少, 只知道肯定之前是由换行的. (当然也有可能什么也不导入, 直接就定义函数的py程序, 但那样也太罕见了了吧)</p>
+<p>正则表达式还不熟练, 不知道<code>r'(\n)(\s*)(def)'</code>找到以后如何用group来拆分. 所以干脆取巧, 反正中间的缩进部分是要重复两遍的, 不妨就先把整体重复两遍, 然后再替换掉其中一个</p>
 
 </div>
 </div>
@@ -11871,19 +11836,20 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">database</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;danielle&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/danielle.png&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;younes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/younes.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;tian&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/tian.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;andrew&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/andrew.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;kian&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/kian.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;dan&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/dan.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;sebastiano&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/sebastiano.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;bertrand&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/bertrand.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;kevin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/kevin.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;felix&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/felix.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;benoit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/benoit.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">database</span><span class="p">[</span><span class="s2">&quot;arnaud&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/arnaud.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">add_pattern</span><span class="p">(</span><span class="n">text</span><span class="p">,</span><span class="n">prefix</span><span class="p">,</span><span class="n">target_word</span><span class="p">,</span><span class="n">add_string</span><span class="p">):</span>
+    <span class="n">target_pattern</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">prefix</span><span class="o">+</span><span class="n">target_word</span><span class="p">)</span>    
+    <span class="k">def</span> <span class="nf">add_core</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+        <span class="n">s</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+        <span class="n">new</span><span class="o">=</span><span class="n">s</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">+</span><span class="n">s</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">target_word</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">add_string</span><span class="p">,</span><span class="n">new</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">target_pattern</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">add_core</span><span class="p">,</span><span class="n">text</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">remove_pattern</span><span class="p">(</span><span class="n">text</span><span class="p">,</span><span class="n">prefix</span><span class="p">,</span><span class="n">target_word</span><span class="p">):</span>
+    <span class="n">target_pattern</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">prefix</span><span class="o">+</span><span class="n">target_word</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">remove_core</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+        <span class="n">s</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">target_pattern</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">remove_core</span><span class="p">,</span><span class="n">text</span><span class="p">))</span>
 </pre></div>
 
 </div>
@@ -11895,7 +11861,10 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="&#20195;&#25968;&#35745;&#31639;&#36335;&#24452;">&#20195;&#25968;&#35745;&#31639;&#36335;&#24452;<a class="anchor-link" href="#&#20195;&#25968;&#35745;&#31639;&#36335;&#24452;">&#182;</a></h1><p>距离使用norm 2范数进行计算. 输出根据阈值进行sigmoid.</p>
+<h1 id="&#22686;&#21152;/&#21435;&#38500;@jit">&#22686;&#21152;/&#21435;&#38500;@jit<a class="anchor-link" href="#&#22686;&#21152;/&#21435;&#38500;@jit">&#182;</a></h1><ul>
+<li>add_jit: 在每一个def之前添加@git</li>
+<li>remove_jit: 将每个单行的@jit去除</li>
+</ul>
 
 </div>
 </div>
@@ -11905,65 +11874,40 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nd">@jit</span>
-<span class="k">def</span> <span class="nf">dist_path</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">threshold</span><span class="p">):</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">norm</span><span class="p">((</span><span class="n">x1</span><span class="o">-</span><span class="n">x2</span><span class="p">),</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="c1"># output=1-Activation(&#39;sigmoid&#39;)(d-threshold)</span>
-    <span class="n">output</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">-</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">d</span><span class="o">-</span><span class="n">threshold</span><span class="p">))</span><span class="o">/</span><span class="mi">2</span>
-    <span class="k">return</span> <span class="n">output</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">add_jit</span><span class="p">(</span><span class="n">text</span><span class="p">,</span><span class="n">ext</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">ext</span><span class="o">==</span><span class="s1">&#39;.py&#39;</span><span class="p">:</span>
+        <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;(</span><span class="se">\n</span><span class="s1">)(\s*)&#39;</span>
+        <span class="n">add_numba</span><span class="o">=</span><span class="s1">&#39;from numba import jit&#39;</span>
+        <span class="n">add_numba_jit</span><span class="o">=</span><span class="s1">&#39;@jit&#39;</span>
+    <span class="k">elif</span> <span class="n">ext</span><span class="o">==</span><span class="s1">&#39;.ipynb&#39;</span><span class="p">:</span>
+        <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;(</span><span class="se">\n</span><span class="s1">)(\s*)(</span><span class="se">\&quot;</span><span class="s1">)(\s*)&#39;</span>
+        <span class="n">add_numba</span><span class="o">=</span><span class="s1">&#39;from numba import jit&quot;, &#39;</span>
+        <span class="n">add_numba_jit</span><span class="o">=</span><span class="s1">&#39;@jit&quot;, &#39;</span>
+        
+    <span class="n">text</span> <span class="o">=</span> <span class="n">add_pattern</span><span class="p">(</span><span class="n">text</span><span class="p">,</span><span class="n">prefix</span><span class="p">,</span><span class="s1">&#39;import numpy as np&#39;</span><span class="p">,</span><span class="n">add_numba</span><span class="p">)</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">add_pattern</span><span class="p">(</span><span class="n">text</span><span class="p">,</span><span class="n">prefix</span><span class="p">,</span><span class="s1">&#39;def&#39;</span><span class="p">,</span><span class="n">add_numba_jit</span><span class="p">)</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;jit&quot;&#39;</span><span class="p">,</span><span class="s1">&#39;jit</span><span class="se">\\</span><span class="s1">n&quot;&#39;</span><span class="p">)</span> <span class="c1">#此处用re.sub总是会把\n给翻译掉, 试过多种方式</span>
+    <span class="k">return</span> <span class="n">text</span>
+
+<span class="k">def</span> <span class="nf">remove_jit</span><span class="p">(</span><span class="n">text</span><span class="p">,</span><span class="n">ext</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">ext</span><span class="o">==</span><span class="s1">&#39;.py&#39;</span><span class="p">:</span>
+        <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;(</span><span class="se">\n</span><span class="s1">)(\s*)&#39;</span>
+        <span class="n">add_numba</span><span class="o">=</span><span class="s1">&#39;from numba import jit&#39;</span>
+        <span class="n">add_numba_jit</span><span class="o">=</span><span class="s1">&#39;@jit&#39;</span>
+    <span class="k">elif</span> <span class="n">ext</span><span class="o">==</span><span class="s1">&#39;.ipynb&#39;</span><span class="p">:</span>
+        <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;(\s*)&#39;</span>
+        <span class="n">add_numba</span><span class="o">=</span><span class="s1">&#39;from numba import jit&#39;</span>
+        <span class="n">add_numba_jit</span><span class="o">=</span><span class="s1">&#39;@jit&#39;</span>
+
+    <span class="n">text</span> <span class="o">=</span> <span class="n">remove_pattern</span><span class="p">(</span><span class="n">text</span><span class="p">,</span><span class="n">prefix</span><span class="p">,</span><span class="n">add_numba</span><span class="p">)</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">remove_pattern</span><span class="p">(</span><span class="n">text</span><span class="p">,</span><span class="n">prefix</span><span class="p">,</span><span class="n">add_numba_jit</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">text</span>
+
+<span class="c1"># jit_added  =add_jit(f_content)</span>
+<span class="c1"># jit_removed=remove_jit(f_content)</span>
 </pre></div>
 
 </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">test_face</span><span class="o">=</span><span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/camera_0.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">target_face</span><span class="o">=</span> <span class="n">database</span><span class="p">[</span><span class="s2">&quot;younes&quot;</span><span class="p">]</span>
-<span class="n">d0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">((</span><span class="n">test_face</span><span class="o">-</span><span class="n">target_face</span><span class="p">),</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span><span class="n">keepdims</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">d0</span><span class="p">)</span>
-<span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
-
-<span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">test</span><span class="p">:</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">faceA_codes</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">128</span><span class="p">])</span>
-    <span class="n">faceB_codes</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">128</span><span class="p">])</span>
-    <span class="n">A</span> <span class="o">=</span> <span class="n">dist_path</span><span class="p">(</span><span class="n">faceA_codes</span><span class="p">,</span><span class="n">faceB_codes</span><span class="p">,</span><span class="mf">0.7</span><span class="p">)</span>
-    <span class="n">test</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">global_variables_initializer</span><span class="p">())</span>
-    
-    <span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">A</span><span class="p">],</span> 
-                   <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
-                       <span class="n">faceA_codes</span><span class="p">:</span> <span class="n">test_face</span><span class="p">,</span> 
-                       <span class="n">faceB_codes</span><span class="p">:</span> <span class="n">target_face</span><span class="p">,</span> 
-                       <span class="n">K</span><span class="o">.</span><span class="n">learning_phase</span><span class="p">():</span> <span class="mi">0</span><span class="p">})</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;out = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
-</pre></div>
-
-</div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-<div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>0.659393
-out = [array([ 1.], dtype=float32)]
-</pre>
-</div>
-</div>
-
 </div>
 </div>
 
@@ -11972,9 +11916,31 @@ out = [array([ 1.], dtype=float32)]
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="&#20462;&#27491;&#36335;&#24452;">&#20462;&#27491;&#36335;&#24452;<a class="anchor-link" href="#&#20462;&#27491;&#36335;&#24452;">&#182;</a></h1><p>建立一个神经网络引入修正值, 后期可以通过调整修正路径中的参数对结果进行微调. 对于使用范围比较局限的场景, 例如公司员工的人脸识别, 需要泛化的要求较低, 即使修正路径发生了过拟合也可以接受.</p>
-<p>为了初期不影响代数路径的结果, 修正路径的参数初始化可以使用均值为0的小量, 使得初始输出结果很小.</p>
+<h1 id="&#20889;&#20837;&#25991;&#20214;">&#20889;&#20837;&#25991;&#20214;<a class="anchor-link" href="#&#20889;&#20837;&#25991;&#20214;">&#182;</a></h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">write_content</span><span class="p">(</span><span class="n">output_filename</span><span class="p">,</span><span class="n">f_content</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_filename</span><span class="p">,</span><span class="s1">&#39;wt&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_output</span><span class="p">:</span>
+        <span class="n">f_output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f_content</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span>
+</pre></div>
 
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="&#25972;&#21512;&#21253;&#35013;">&#25972;&#21512;&#21253;&#35013;<a class="anchor-link" href="#&#25972;&#21512;&#21253;&#35013;">&#182;</a></h1>
 </div>
 </div>
 </div>
@@ -11983,48 +11949,59 @@ out = [array([ 1.], dtype=float32)]
 <div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nd">@jit</span>
-<span class="k">def</span> <span class="nf">tinker_path</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">):</span> 
-    <span class="n">X</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">],</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-<span class="c1">#     X = Flatten()(X)</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">,</span> 
-              <span class="n">kernel_initializer</span> <span class="o">=</span> <span class="n">RandomNormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">))(</span><span class="n">X</span><span class="p">)</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">,</span> 
-              <span class="n">kernel_initializer</span> <span class="o">=</span> <span class="n">RandomNormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">))(</span><span class="n">X</span><span class="p">)</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;tanh&#39;</span><span class="p">,</span> 
-              <span class="n">kernel_initializer</span> <span class="o">=</span> <span class="n">RandomNormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">))(</span><span class="n">X</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">X</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">decorate_with_jit</span><span class="p">(</span><span class="n">input_filename</span><span class="p">,</span><span class="n">output_filename</span><span class="p">,</span><span class="n">marker</span><span class="p">):</span>
+    <span class="n">ext</span><span class="p">,</span><span class="n">f_content</span><span class="o">=</span><span class="n">get_file_content</span><span class="p">(</span><span class="n">input_filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">marker</span><span class="o">==</span><span class="s1">&#39;--a&#39;</span><span class="p">:</span>
+        <span class="n">f_content</span> <span class="o">=</span> <span class="n">add_jit</span><span class="p">(</span><span class="n">f_content</span><span class="p">,</span> <span class="n">ext</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">marker</span><span class="o">==</span><span class="s1">&#39;--r&#39;</span><span class="p">:</span>
+        <span class="n">f_content</span> <span class="o">=</span> <span class="n">remove_jit</span><span class="p">(</span><span class="n">f_content</span><span class="p">,</span><span class="n">ext</span><span class="p">)</span>   
+    <span class="n">write_content</span><span class="p">(</span><span class="n">output_filename</span><span class="p">,</span><span class="n">f_content</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="se">\t</span><span class="s2">-&gt;</span><span class="se">\t</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">input_filename</span><span class="p">,</span> <span class="n">output_filename</span><span class="p">))</span>
 </pre></div>
 
 </div>
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="&#21442;&#25968;&#35843;&#29992;">&#21442;&#25968;&#35843;&#29992;<a class="anchor-link" href="#&#21442;&#25968;&#35843;&#29992;">&#182;</a></h1>
+</div>
+</div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">test_face</span><span class="o">=</span><span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/camera_0.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">target_face</span><span class="o">=</span> <span class="n">database</span><span class="p">[</span><span class="s2">&quot;younes&quot;</span><span class="p">]</span>
-<span class="n">d0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">((</span><span class="n">test_face</span><span class="o">-</span><span class="n">target_face</span><span class="p">),</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span><span class="n">keepdims</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">d0</span><span class="p">)</span>
-<span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">argv1</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">argv2</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">argv3</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="c1">#     argv1=&#39;--a&#39;</span>
+<span class="c1">#     argv2=&quot;allipynb&quot;</span>
+<span class="c1">#     argv3=&quot;numba&quot;</span>
 
-<span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">test</span><span class="p">:</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">faceA_codes</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">128</span><span class="p">])</span>
-    <span class="n">faceB_codes</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">128</span><span class="p">])</span>
-    <span class="n">A</span> <span class="o">=</span> <span class="n">tinker_path</span><span class="p">(</span><span class="n">faceA_codes</span><span class="p">,</span><span class="n">faceB_codes</span><span class="p">)</span>
-    <span class="n">test</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">global_variables_initializer</span><span class="p">())</span>
+    <span class="n">marker</span><span class="o">=</span><span class="n">argv1</span>
+    <span class="n">input_filename</span><span class="o">=</span><span class="n">argv2</span>
     
-    <span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">A</span><span class="p">],</span> 
-                   <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
-                       <span class="n">faceA_codes</span><span class="p">:</span> <span class="n">test_face</span><span class="p">,</span> 
-                       <span class="n">faceB_codes</span><span class="p">:</span> <span class="n">target_face</span><span class="p">,</span> 
-                       <span class="n">K</span><span class="o">.</span><span class="n">learning_phase</span><span class="p">():</span> <span class="mi">0</span><span class="p">})</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;out = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+    <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;allpy&quot;</span><span class="p">:</span>   <span class="s2">&quot;*.py&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;allipynb&quot;</span><span class="p">:</span><span class="s2">&quot;*.ipynb&quot;</span>
+               <span class="p">}</span>
+    <span class="k">if</span> <span class="n">input_filename</span><span class="o">==</span><span class="s2">&quot;allpy&quot;</span> <span class="ow">or</span> <span class="n">input_filename</span><span class="o">==</span><span class="s2">&quot;allipynb&quot;</span><span class="p">:</span>
+        <span class="n">input_filelist</span><span class="o">=</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="n">input_filename</span><span class="p">])</span>
+        <span class="n">output_path</span><span class="o">=</span><span class="n">argv3</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">output_filelist</span><span class="o">=</span><span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">input_filelist</span><span class="p">]</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">o</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">input_filelist</span><span class="p">,</span><span class="n">output_filelist</span><span class="p">):</span>
+            <span class="n">decorate_with_jit</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">o</span><span class="p">,</span><span class="n">marker</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">output_filename</span><span class="o">=</span><span class="n">argv3</span>
+        <span class="n">decorate_with_jit</span><span class="p">(</span><span class="n">input_filename</span><span class="p">,</span><span class="n">output_filename</span><span class="p">,</span><span class="n">marker</span><span class="p">)</span>
 </pre></div>
 
 </div>
@@ -12041,111 +12018,12 @@ out = [array([ 1.], dtype=float32)]
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>0.659393
-out = [array([[ 0.0001808]], dtype=float32)]
+<pre>Face_Recognition_tinker.ipynb	-&gt;	numba/Face_Recognition_tinker.ipynb
+decorate_with_jit.ipynb	-&gt;	numba/decorate_with_jit.ipynb
 </pre>
 </div>
 </div>
 
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="&#21512;&#24182;&#36335;&#24452;">&#21512;&#24182;&#36335;&#24452;<a class="anchor-link" href="#&#21512;&#24182;&#36335;&#24452;">&#182;</a></h1><p>代数计算路径和神经网络路径的结果进行加权平均, 获得最终的结果</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># @jit</span>
-<span class="k">def</span> <span class="nf">face_tinker</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">threshold</span><span class="p">,</span><span class="n">alpha</span><span class="p">):</span>
-    <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="n">dist_path</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">,</span><span class="n">threshold</span><span class="p">),</span> <span class="n">tinker_path</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">)]</span>
-    <span class="n">X</span><span class="o">=</span><span class="n">Add</span><span class="p">()([</span> <span class="n">a</span><span class="o">*</span><span class="n">path</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">path</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span><span class="n">paths</span><span class="p">)])</span>
-    <span class="k">return</span> <span class="n">X</span>
-</pre></div>
-
-</div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">test_face</span><span class="o">=</span><span class="n">img_to_encoding</span><span class="p">(</span><span class="s2">&quot;images/camera_0.jpg&quot;</span><span class="p">,</span> <span class="n">FRmodel</span><span class="p">)</span>
-<span class="n">target_face</span><span class="o">=</span> <span class="n">database</span><span class="p">[</span><span class="s2">&quot;younes&quot;</span><span class="p">]</span>
-
-<span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
-
-<span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">test</span><span class="p">:</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">faceA_codes</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">128</span><span class="p">])</span>
-    <span class="n">faceB_codes</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">128</span><span class="p">])</span>
-    <span class="n">threshold</span> <span class="o">=</span> <span class="mf">0.7</span>
-    <span class="n">alpha</span><span class="o">=</span><span class="p">[</span><span class="mf">0.7</span><span class="p">,</span><span class="mf">0.3</span><span class="p">]</span>
-    <span class="n">A</span> <span class="o">=</span> <span class="n">face_tinker</span><span class="p">(</span><span class="n">faceA_codes</span><span class="p">,</span><span class="n">faceB_codes</span><span class="p">,</span><span class="n">threshold</span><span class="p">,</span><span class="n">alpha</span><span class="p">)</span>
-    <span class="n">test</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">global_variables_initializer</span><span class="p">())</span>
-    
-    <span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">A</span><span class="p">],</span> 
-                   <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
-                       <span class="n">faceA_codes</span><span class="p">:</span> <span class="n">test_face</span><span class="p">,</span> 
-<span class="c1">#                        faceB_codes: database[&quot;felix&quot;], </span>
-                       <span class="n">faceB_codes</span><span class="p">:</span> <span class="n">target_face</span><span class="p">,</span> 
-                       <span class="n">K</span><span class="o">.</span><span class="n">learning_phase</span><span class="p">():</span> <span class="mi">0</span><span class="p">})</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;out = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
-</pre></div>
-
-</div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-<div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>out = [array([[ 0.70005423]], dtype=float32)]
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="&#20462;&#27491;&#36335;&#24452;&#30340;&#35757;&#32451;">&#20462;&#27491;&#36335;&#24452;&#30340;&#35757;&#32451;<a class="anchor-link" href="#&#20462;&#27491;&#36335;&#24452;&#30340;&#35757;&#32451;">&#182;</a></h1><p>todo</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
-</pre></div>
-
-</div>
 </div>
 </div>
 

@@ -28,7 +28,6 @@ from keras import backend as K
 K.set_image_data_format('channels_first')
 import cv2
 import os
-from numba import jit
 import numpy as np
 # from numpy import genfromtxt
 # import pandas as pd
@@ -77,7 +76,6 @@ database["arnaud"] = img_to_encoding("images/arnaud.jpg", FRmodel)
 # In[4]:
 
 
-@jit
 def dist_path(x1,x2,threshold):
     d = tf.norm((x1-x2),axis=-1)
     # output=1-Activation('sigmoid')(d-threshold)
@@ -85,7 +83,7 @@ def dist_path(x1,x2,threshold):
     return output
 
 
-# In[5]:
+# In[6]:
 
 
 test_face=img_to_encoding("images/camera_0.jpg", FRmodel)
@@ -114,10 +112,9 @@ with tf.Session() as test:
 # 
 # 为了初期不影响代数路径的结果, 修正路径的参数初始化可以使用均值为0的小量, 使得初始输出结果很小. 
 
-# In[6]:
+# In[7]:
 
 
-@jit
 def tinker_path(x1,x2): 
     X=tf.concat([x1,x2],axis=-1)
 #     X = Flatten()(X)
@@ -130,7 +127,7 @@ def tinker_path(x1,x2):
     return X
 
 
-# In[7]:
+# In[8]:
 
 
 test_face=img_to_encoding("images/camera_0.jpg", FRmodel)
@@ -157,17 +154,16 @@ with tf.Session() as test:
 # # 合并路径
 # 代数计算路径和神经网络路径的结果进行加权平均, 获得最终的结果
 
-# In[8]:
+# In[9]:
 
 
-# @jit
 def face_tinker(x1,x2,threshold,alpha):
     paths=[dist_path(x1,x2,threshold), tinker_path(x1,x2)]
     X=Add()([ a*path for (a,path) in zip(alpha,paths)])
     return X
 
 
-# In[9]:
+# In[10]:
 
 
 test_face=img_to_encoding("images/camera_0.jpg", FRmodel)
